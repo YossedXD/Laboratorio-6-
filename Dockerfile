@@ -1,24 +1,28 @@
-FROM python:3.11-slim
+# Imagen base con Python 3.10
+FROM python:3.10
 
-# Dependencias mínimas para Pygame + pantalla virtual
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libsdl2-2.0-0 \
-    libsdl2-image-2.0-0 \
-    libsdl2-mixer-2.0-0 \
-    libsdl2-ttf-2.0-0 \
-    libsdl2-gfx-1.0-0 \
-    libportmidi0 \
-    xvfb \
-    x11-utils \
-    xauth \
+# Evita prompts interactivos
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Instalación de dependencias del sistema para cámara + OpenCV
+RUN apt-get update && apt-get install -y \
+    libgl1 \
+    libglib2.0-0 \
+    v4l-utils \
     && rm -rf /var/lib/apt/lists/*
 
+# Carpeta del proyecto
 WORKDIR /app
 
+# Copiar archivos
 COPY requirements.txt .
+COPY detector_de_gestos.py .
 
+# Instalar dependencias Python
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+# Exponer el puerto de Streamlit
+EXPOSE 8501
 
-CMD ["xvfb-run", "-s", "-screen 0 800x600x24", "python", "juego.py"]
+# Ejecutar Streamlit
+CMD ["streamlit", "run", "detector_de_gestos.py", "--server.address=0.0.0.0"]
