@@ -1,4 +1,213 @@
 # Laboratorio 6 
+# 1 Punto Analizador de Sentimientos — Hilos + Streamlit + Docker
+
+Este proyecto implementa un **sistema de análisis de sentimientos en paralelo** usando:
+
+- Python `threading`
+- Locks para evitar condiciones de carrera
+- Análisis de sentimientos basado en diccionarios
+- Streamlit para interfaz visual
+- Docker para despliegue del aplicativo
+
+Procesa **lotes grandes de comentarios en paralelo**, clasificándolos como:
+
+-  Positivos  
+-  Negativos  
+-  Neutros  
+
+---
+
+# 1. Objetivo
+
+Procesar textos en paralelo para analizar emociones usando hilos, integrando:
+
+- Programación concurrente  
+- Sincronización con `Lock`
+- Interfaz web con Streamlit
+- Despliegue mediante Docker
+
+---
+
+#  2. Descripción del Proyecto
+
+El sistema recibe un **lote de comentarios**, por ejemplo opiniones de productos o reseñas de usuarios.
+
+Luego:
+
+1. Se divide el conjunto de comentarios entre varios hilos.
+2. Cada hilo procesa su subconjunto y clasifica el sentimiento aplicando un diccionario de palabras positivas y negativas.
+3. Los resultados se guardan en una lista compartida protegida con `Lock`.
+4. Streamlit presenta:
+   - Cantidad de comentarios procesados
+   - Estadísticas
+   - Listado completo de comentarios y clasificación final
+5. Finalmente se empaqueta en Docker.
+
+---
+
+#  3. Condiciones de Carrera y Solución
+
+Como varios hilos escriben sobre la **misma lista compartida**, existe riesgo de:
+
+ Datos mezclados  
+ Pérdida de información  
+ Inconsistencia entre hilos  
+
+###  Solución: Lock (Mutual Exclusion)
+
+Se utiliza:
+
+```python
+lock = threading.Lock()
+```
+Cada vez que un hilo va a escribir en la lista:
+```python
+with lock:
+    resultados.append({...})
+```
+
+Esto garantiza que solo un hilo escribe a la vez, evitando conflictos.
+
+4. Implementación de Hilos
+
+Los hilos se crean así:
+```python
+for i in range(num_hilos):
+    hilo = threading.Thread(target=procesar_comentarios, args=(sublista,i))
+    hilos.append(hilo)
+    hilo.start()
+```
+
+Luego:
+```python
+for h in hilos:
+    h.join()
+
+```
+Esto asegura:
+
+Ejecución paralela
+
+Sincronización al terminar
+
+Seguridad al escribir
+
+5. Método de Clasificación del Sentimiento
+
+Se usa un diccionario simple:
+```python
+positivas = ["excelente", "bueno", "me encantó", "satisfecho"]
+negativas = ["malo", "terrible", "defectuoso", "horrible"]
+```
+
+Clasificación:
+
+Si predominan palabras positivas → positivo
+
+Si predominan palabras negativas → negativo
+
+Si están equilibradas o no aparecen → neutro
+
+También se aplican normalización y limpieza del texto.
+
+6. Interfaz Visual con Streamlit
+
+Streamlit permite:
+
+Cargar archivo de comentarios o escribir manualmente
+
+Ejecutar análisis
+
+Mostrar tabla con resultados por hilo
+
+Mostrar gráficos y estadísticas
+
+Ver cada comentario con color según su sentimiento
+
+Ejemplo de ejecución:
+```python
+
+streamlit run app.py
+```
+
+7. Estructura del Proyecto
+
+Analizadora Sentimientos/
+│── app.py
+│── requirements.txt
+│── Dockerfile
+│── comentarios.txt
+│── imagenes/
+      ├── docker_build.png
+      ├── pagina_streamlit.png
+      ├── comentarios_clasificados.png
+
+8. requirements.txt
+```python
+streamlit
+```
+9. Dockerfile
+```python
+FROM python:3.10
+
+WORKDIR /app
+
+COPY requirements.txt .
+COPY app.py .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+EXPOSE 8501
+
+CMD ["streamlit", "run", "app.py", "--server.address=0.0.0.0"]
+```
+
+10. Construcción del Contenedor
+
+Desde la carpeta del proyecto:
+```python
+
+docker build -t analizador-sentimientos .
+```
+
+Ejemplo real de tu consola:
+```python
+docker build -t analizador-sentimientos .
+[+] Building 58.4s (10/10) FINISHED
+```
+11. Ejecutar el contenedor
+```python  
+docker run -p 8501:8501 analizador-sentimientos
+
+```
+Salida esperada:
+```python
+You can now view your Streamlit app in your browser.
+URL: http://0.0.0.0:8501
+```
+
+Luego abres:
+
+ http://localhost:8501
+
+ 12. Galería de Imágenes (añade aquí tus capturas)
+ Docker Build
+
+<img width="1473" height="521" alt="image" src="https://github.com/user-attachments/assets/24107b48-bb12-49ff-81b0-48d2c56fb2bd" />
+
+<img width="1452" height="558" alt="image" src="https://github.com/user-attachments/assets/3c3d1a20-db41-490a-a023-ca5716d51b72" />
+
+ Aplicación Streamlit Corriendo
+ 
+ <img width="1585" height="759" alt="image" src="https://github.com/user-attachments/assets/f3209b4b-bb99-407b-b613-68a3fa912601" />
+ 
+<img width="1056" height="858" alt="image" src="https://github.com/user-attachments/assets/eefd878f-216c-42a7-a445-c900f2d3beff" />
+
+
+ Comentarios Clasificados
+ 
+ <img width="648" height="841" alt="image" src="https://github.com/user-attachments/assets/7bdcaa8b-5a34-4df7-9dc8-63829ff4e988" />
+   
 
 # Punto 2 
 
