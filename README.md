@@ -187,6 +187,231 @@ Si tu sistema usa WSL o X11, puede requerir configuración adicional para mostra
 pip install pygame
 python juego.py
 ```
+
+
+
+
+# 3 Punto Detector de Gestos con DOS Manos — MediaPipe + Hilos + Mutex + Semáforos + Docker
+
+Este proyecto desarrolla un sistema capaz de **detectar gestos de mano en tiempo real** usando:
+
+- **MediaPipe Hands**
+- **OpenCV**
+- **Programación concurrente (hilos, mutex, semáforos)**
+- **Streamlit**
+- **Docker**
+
+Se detectan gestos como:
+-  OK  
+-  Pulgar Arriba  
+-  Pulgar Abajo  
+-  Paz  
+-  Puño Cerrado  
+-  Mano Abierta  
+
+Además, el sistema soporta **detección simultánea de 2 manos**.
+
+---
+
+#  1. Objetivo
+
+Implementar un algoritmo sencillo pero completo que detecte diferentes gestos de mano utilizando:
+
+- MediaPipe
+- Hilos
+- Semáforos
+- Mutex y sección crítica
+- Aplicación web con Streamlit
+- Contenedor en Docker
+
+---
+
+#  2. Arquitectura General del Sistema
+
+El sistema utiliza 3 hilos principales:
+
+###  **Hilo 1 – Captura de Cámara**
+- Obtiene frames de la cámara en tiempo real.
+- Coloca cada frame en la variable compartida `compartido["frame"]`.
+- Usa un `Semaphore` para indicar que hay un frame listo.
+
+###  **Hilo 2 – Procesamiento de Gestos**
+- Consume frames desde el semáforo.
+- Ejecuta MediaPipe Hands.
+- Clasifica el gesto detectado.
+- Genera el frame anotado.
+- Guarda resultados en variables compartidas.
+
+###  **Hilo 3 – Interfaz Streamlit**
+- Muestra el video procesado.
+- Renderiza los gestos detectados.
+- Controla botones de inicio/detención.
+
+---
+
+#  3. Recursos Compartidos, Mutex y Sección Crítica
+
+El sistema usa:
+
+##  **Mutex (`Lock`)**  
+Protege el acceso a la estructura:
+
+```python
+compartido = {
+    "frame": None,
+    "frame_anotado": None,
+    "texto_gesto": "",
+    "activo": False
+}
+```
+
+Solo un hilo puede modificar estos valores a la vez.
+
+ Semáforo (Semaphore)
+```python
+
+frames_disponibles = Semaphore(0)
+
+```
+Controla cuándo el hilo de procesamiento puede obtener un nuevo frame.
+Evita  sobrecarga o duplicación de frames.
+
+4. Detección de Gestos con MediaPipe
+
+Cada mano tiene 21 puntos (landmarks).
+Se clasifica el gesto calculando:
+
+- Dedos levantados
+- Distancia entre pulgar y índice (OK)
+- Posición del pulgar (arriba/abajo)
+- Combinaciones para paz, puño, mano abierta
+
+Ejemplo de lógica de dedo levantado:
+```python
+# Dedo levantado si la punta está más arriba que el nudillo
+dedos = [1 if lm[t][1] < lm[p][1] else 0 for t, p in zip(puntas[1:], nudillos[1:])]
+```
+5. Flujo Completo
+ Streamlit → botón "Iniciar cámara"
+
+Activa el flag activo = True y lanza:
+
+hilo de cámara
+
+hilo de procesamiento
+
+Hilo cámara captura video
+
+Guarda los frames y libera el semáforo.
+
+ Hilo procesamiento usa MediaPipe
+
+Añade puntos + conexiones
+Clasifica gesto
+Devuelve texto + frame anotado
+
+ Streamlit muestra todo en tiempo real
+
+ 6. Estructura del Proyecto
+ gestos/
+│── detector_de_gestos.py
+│── requirements.txt
+│── Dockerfile
+│── imagenes/
+      ├── captura1.png
+      ├── captura2.png
+      ├── pulgar_arriba.png
+      ├── ok.png
+      ├── streamlit.png
+      ├── docker_build.png
+
+ 7. Instalación Local
+```python
+      pip install streamlit opencv-python mediapipe
+streamlit run detector_de_gestos.py
+```
+Si OpenCV falla:
+```python
+
+Copiar código
+pip install opencv-python-headless
+```
+8. Dockerización del Proyecto
+requirements.txt
+```python
+streamlit
+opencv-python
+mediapipe
+```
+Dockerfile
+```python
+FROM python:3.10
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    libgl1 \
+    libglib2.0-0 \
+    v4l-utils \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements.txt .
+COPY detector_de_gestos.py .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+EXPOSE 8501
+
+CMD ["streamlit", "run", "detector_de_gestos.py", "--server.address=0.0.0.0"]
+```
+9. Construcción y Ejecución del Contenedor
+🔧 Construir imagen
+```python
+docker build -t detector-gestos .
+```
+▶️ Ejecutar
+```python
+docker run -p 8501:8501 detector-gestos
+
+```
+Abre en navegador:
+```python
+
+http://localhost:8501
+```
+10. Galería de Imágenes
+
+Imaganes del punto 3
+
+Detección de dos manos
+ <img width="943" height="789" alt="image" src="https://github.com/user-attachments/assets/61b6b5c3-d520-4c9b-8272-14bb57d11534" />
+
+ Pulgar arriba
+
+<img width="936" height="834" alt="image" src="https://github.com/user-attachments/assets/f0246444-65bf-42d1-a01f-a3cc90b395b3" />
+    
+    
+  Pulgar abajo
+    <img width="926" height="827" alt="image" src="https://github.com/user-attachments/assets/0164f198-9bc0-4641-84c3-b69ba5098734" />
+
+Gesto OK
+ <img width="886" height="819" alt="image" src="https://github.com/user-attachments/assets/25eefe8e-c7cb-461d-b32e-0f3c3178852c" />
+
+prueba puño
+  <img width="894" height="829" alt="image" src="https://github.com/user-attachments/assets/9ca64eb9-dce5-4824-a5c7-657c2e6ee386" />
+
+prueba manos abiertas
+ <img width="891" height="830" alt="image" src="https://github.com/user-attachments/assets/3b4f8286-5b0a-4511-b7c7-bfc20c6caa62" />
+
+
+Imagen del contenedor construido
+
+<img width="1445" height="684" alt="image" src="https://github.com/user-attachments/assets/6460c94b-afa8-47a7-8b4c-21388e035da7" />
+<img width="1461" height="644" alt="image" src="https://github.com/user-attachments/assets/cb37b75b-d226-49db-8ee3-ae46bb1890f2" />
+
+
 ### 9. Autores
 
 Laboratorio 6 realizado por:
